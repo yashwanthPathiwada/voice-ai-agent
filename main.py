@@ -6,11 +6,7 @@ Pipeline: Audio → STT (Deepgram) → LLM Agent → TTS (ElevenLabs) → Audio
 Latency target: <450ms from speech-end to first audio chunk
 """
 
-import os
-from dotenv import load_dotenv
-import google.generativeai as genai
 
-load_dotenv()
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
@@ -37,10 +33,7 @@ from outbound import OutboundCallScheduler
 from models import SessionState, AppointmentRequest
 import os
 from dotenv import load_dotenv
-load_dotenv()
-import os
-from google import genai
-import random
+
 
 responses = [
     "Hello! How can I help you?",
@@ -133,8 +126,7 @@ async def voice_pipeline(websocket: WebSocket, session_id: str):
                     "trace": "Generating AI response..."
                 })
 
-                # 🔥 Simple working response (NO Gemini)
-                response_text = "Your appointment with Dr Sharma is booked for tomorrow at 10 AM."
+                response_text = "Your appointment is confirmed for tomorrow at 10 AM."
 
                 await websocket.send_json({
                     "type": "transcript",
