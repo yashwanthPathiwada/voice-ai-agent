@@ -4,6 +4,17 @@
 
 ---
 
+📁 Folder structure
+voice-ai-agent/
+│
+├── main.py
+├── requirements.txt
+├── README.md
+├── static/
+│   └── index.html
+└── screenshots/
+    ├── working.png
+
 ## 📐 System Architecture
 
 ```
