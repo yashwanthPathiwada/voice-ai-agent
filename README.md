@@ -15,6 +15,64 @@
                     └── screenshots/
                         ├── working.png
 
+
+# 🎤 Voice AI Agent Demo
+
+## 🚀 Overview
+
+This project is a real-time Voice AI Agent that captures user speech, processes it, and responds with text and speech output.
+
+## ⚙️ Features
+
+* Real-time voice input using microphone
+* WebSocket-based communication
+* AI-like response generation
+* Text-to-Speech (TTS) output
+* Clean and interactive UI
+
+## 🛠️ Tech Stack
+
+* Python (FastAPI)
+* WebSockets
+* HTML, CSS, JavaScript
+* Browser Speech APIs
+
+## ▶️ How to Run
+
+1. Install dependencies:
+
+```
+pip install -r requirements.txt
+```
+
+2. Run server:
+
+```
+uvicorn main:app --reload
+```
+
+3. Open in browser:
+
+```
+http://127.0.0.1:8000
+```
+
+## 📸 Output
+
+The application listens to voice input and returns a response like:
+"Your appointment is booked for tomorrow at 10 AM."
+
+## 🧠 Note
+
+This version uses rule-based responses for demonstration purposes (no external API required).
+
+## ✅ Status
+
+✔ Fully working demo
+✔ Real-time voice interaction
+✔ Ready for submission
+
+
 ## 📐 System Architecture
 
 ```
