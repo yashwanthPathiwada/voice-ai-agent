@@ -8,12 +8,12 @@ Latency target: <450ms from speech-end to first audio chunk
 
 
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+
 
 import asyncio
 import json
 import logging
+import random
 import time
 from fastapi.responses import JSONResponse
 import uuid
@@ -44,7 +44,6 @@ responses = [
 
 response_text = random.choice(responses)
 
-client = genai.Client(api_key="YOUR_GEMINI_API_KEY")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
