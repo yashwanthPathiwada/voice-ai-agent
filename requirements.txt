@@ -10,4 +10,5 @@ asyncpg==0.29.0
 celery[redis]==5.4.0
 twilio==9.0.0
 python-dotenv==1.0.1
-pydantic==2.8.0
+pydantic==1.10.13
+fastapi==0.95.2
