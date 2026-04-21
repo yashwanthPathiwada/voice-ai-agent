@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice AI Agent Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 24px;
+      background: #f5f7fb;
+    }
+
+    .card {
+      max-width: 900px;
+      margin: auto;
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    button {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    #startBtn {
+      background: #2563eb;
+      color: white;
+    }
+
+    #stopBtn {
+      background: #dc2626;
+      color: white;
+    }
+
+    #clearBtn {
+      background: #374151;
+      color: white;
+    }
+
+    .box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      min-height: 80px;
+      white-space: pre-wrap;
+    }
+
+    .label {
+      font-weight: bold;
+      margin-top: 16px;
+      margin-bottom: 6px;
+    }
+
+    #status {
+      font-weight: bold;
+      color: #2563eb;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎤 Voice AI Agent Demo</h1>
+    <div id="status">Status: Idle</div>
+
+    <div class="row">
+      <button id="startBtn">Start Talking</button>
+      <button id="stopBtn">Stop</button>
+      <button id="clearBtn">Clear Logs</button>
+    </div>
+
+    <div class="label">Transcript</div>
+    <div id="transcript" class="box"></div>
+
+    <div class="label">Agent Thinking</div>
+    <div id="thinking" class="box"></div>
+
+    <div class="label">Logs</div>
+    <div id="logs" class="box"></div>
+  </div>
+
+  <script>
+    let ws = null;
+    let mediaRecorder = null;
+    let stream = null;
+    let isSocketOpen = false;
+
+    const statusEl = document.getElementById("status");
+    const transcriptEl = document.getElementById("transcript");
+    const thinkingEl = document.getElementById("thinking");
+    const logsEl = document.getElementById("logs");
+
+    function setStatus(text) {
+      statusEl.textContent = "Status: " + text;
+    }
+
+    function log(message) {
+      console.log(message);
+      logsEl.textContent += message + "\n";
+      logsEl.scrollTop = logsEl.scrollHeight;
+    }
+
+    function arrayBufferToBase64(buffer) {
+      let binary = "";
+      const bytes = new Uint8Array(buffer);
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, i + chunkSize);
+        binary += String.fromCharCode.apply(null, chunk);
+      }
+      return btoa(binary);
+    }
+
+    async function connectWebSocket() {
+      return new Promise((resolve, reject) => {
+        ws = new WebSocket("ws://127.0.0.1:8000/ws/voice/demo123");
+
+        ws.onopen = () => {
+          isSocketOpen = true;
+          log("✅ WebSocket connected");
+          setStatus("WebSocket Connected");
+          resolve();
+        };
+
+        ws.onmessage = async (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            log("⬅️ Server: " + JSON.stringify(msg));
+
+            if (msg.type === "transcript") {
+                if (msg.text && msg.text !== "Receiving audio...") {
+                    transcriptEl.textContent = msg.text;
+                }
+                
+            } else if (msg.type === "agent_thinking") {
+              thinkingEl.textContent += (msg.trace || "") + "\n";
+            } else if (msg.type === "tts_chunk") {
+              log("🔊 Received TTS chunk");
+              // Right now just logging chunk receipt.
+              // Browser playback for raw PCM is not simple with plain Audio().
+              // For demo, transcript + thinking logs are enough.
+            } else if (msg.type === "tts_end") {
+              log("✅ TTS finished");
+              setStatus("Response Complete");
+            } else if (msg.type === "error") {
+              log("❌ Server error: " + (msg.message || "Unknown error"));
+              setStatus("Server Error");
+            }
+          } catch (err) {
+            log("❌ Error parsing server message: " + err.message);
+          }
+        };
+
+        ws.onerror = (err) => {
+          log("❌ WebSocket error");
+          setStatus("WebSocket Error");
+          reject(err);
+        };
+
+        ws.onclose = () => {
+          isSocketOpen = false;
+          log("❌ WebSocket closed");
+          setStatus("WebSocket Closed");
+        };
+      });
+    }
+
+    async function startTalking() {
+      try {
+        transcriptEl.textContent = "";
+        thinkingEl.textContent = "";
+
+        setStatus("Connecting...");
+        await connectWebSocket();
+
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        log("🎙️ Microphone access granted");
+
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = async (event) => {
+          if (!isSocketOpen || !ws || ws.readyState !== WebSocket.OPEN) {
+            log("⚠️ WebSocket not open, skipping audio chunk");
+            return;
+          }
+
+          if (event.data && event.data.size > 0) {
+            const buffer = await event.data.arrayBuffer();
+            const base64Audio = arrayBufferToBase64(buffer);
+
+            ws.send(JSON.stringify({
+              type: "audio_chunk",
+              data: base64Audio
+            }));
+
+            log("➡️ Sent audio chunk");
+          }
+        };
+
+        mediaRecorder.onstart = () => {
+          setStatus("Listening...");
+          log("🎤 Recording started");
+        };
+
+        mediaRecorder.onstop = () => {
+          log("🛑 Recording stopped");
+
+          if (isSocketOpen && ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "audio_end" }));
+            log("➡️ Sent audio_end");
+            setStatus("Processing...");
+          }
+
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+          }
+        };
+
+        mediaRecorder.start(1000);
+      } catch (error) {
+        log("❌ Start error: " + error.message);
+        setStatus("Start Failed");
+      }
+    }
+
+    function stopTalking() {
+      try {
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+          mediaRecorder.stop();
+        } else {
+          log("⚠️ Recorder already stopped");
+        }
+      } catch (error) {
+        log("❌ Stop error: " + error.message);
+      }
+    }
+
+    function clearLogs() {
+      transcriptEl.textContent = "";
+      thinkingEl.textContent = "";
+      logsEl.textContent = "";
+      setStatus("Idle");
+    }
+
+    document.getElementById("startBtn").addEventListener("click", startTalking);
+    document.getElementById("stopBtn").addEventListener("click", stopTalking);
+    document.getElementById("clearBtn").addEventListener("click", clearLogs);
+  </script>
+</body>
+</html>
